@@ -46,7 +46,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-uint8_t cardID = 0;
+uint8_t cardID[5];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -88,6 +88,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   mfrc522_SPI_setHandler(&hspi1, SPI_NSS_GPIO_Port, SPI_NSS_Pin);
   MFRC522_Init();
+  char cardIDtext[20];
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -98,10 +99,15 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 	  HAL_Delay(250);
-	  if(MFRC522_Check(&cardID) == MI_OK){
-		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-		  HAL_Delay(500);
-		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+	  if(MFRC522_Check(cardID) == MI_OK){
+		 //HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, RESET);
+		  uint8_t len = sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X\r\n", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+		  HAL_UART_Transmit(&huart1, (uint8_t*) &cardIDtext, len+1, 100);
+		  HAL_Delay(1000);
+	  }else{
+		  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, SET);
+		  //HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 	  }
   }
   /* USER CODE END 3 */
