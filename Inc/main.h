@@ -41,10 +41,18 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define LED_Pin GPIO_PIN_13
-#define LED_GPIO_Port GPIOC
+#define redLed_Pin GPIO_PIN_13
+#define redLed_GPIO_Port GPIOC
+#define enterLed_Pin GPIO_PIN_0
+#define enterLed_GPIO_Port GPIOA
+#define exitLed_Pin GPIO_PIN_1
+#define exitLed_GPIO_Port GPIOA
 #define SPI_NSS_Pin GPIO_PIN_4
 #define SPI_NSS_GPIO_Port GPIOA
+#define exitButton_Pin GPIO_PIN_12
+#define exitButton_GPIO_Port GPIOB
+#define enterButton_Pin GPIO_PIN_13
+#define enterButton_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
