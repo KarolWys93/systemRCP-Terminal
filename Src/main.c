@@ -38,20 +38,29 @@
 #include "stdbool.h"
 #include "mfrc522.h"
 #include "mfrc522_SPI.h"
+#include "configMode.h"
+#include "uart.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
+
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
+typedef enum
+{
+	enterMode = 0,
+	exitMode
+}Terminal_mode;
+
+Terminal_mode terminalMode = enterMode;
 uint8_t cardID[5];
-//uint8_t prevCardID[5];
-uint8_t lastCardStatus = 0;
 char cardIDtext[20];
+
 
 /* USER CODE END PV */
 
@@ -66,9 +75,38 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
+void checkModeChange(void);
+bool newCardDetected(uint8_t* id);
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+void checkModeChange(void){
+	if(HAL_GPIO_ReadPin(enterButton_GPIO_Port, enterButton_Pin) == GPIO_PIN_RESET){
+		HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, RESET);
+		HAL_GPIO_WritePin(exitLed_GPIO_Port, exitLed_Pin, SET);
+		terminalMode = enterMode;
+	}
+
+	if(HAL_GPIO_ReadPin(exitButton_GPIO_Port, exitButton_Pin) == GPIO_PIN_RESET){
+		HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, SET);
+		HAL_GPIO_WritePin(exitLed_GPIO_Port, exitLed_Pin, RESET);
+		terminalMode = exitMode;
+	}
+}
+
+bool newCardDetected(uint8_t* id){
+	static uint8_t lastCardStatus = 0;
+	if(MFRC522_Check(id) == MI_OK){
+		if(lastCardStatus != MI_OK){
+			lastCardStatus = MI_OK;
+			return true;
+		}
+	}else{
+		lastCardStatus = MI_NOTAGERR;
+	}
+	return false;
+}
 
 /* USER CODE END 0 */
 
@@ -97,7 +135,9 @@ int main(void)
 	mfrc522_SPI_setHandler(&hspi1, SPI_NSS_GPIO_Port, SPI_NSS_Pin);
 	MFRC522_Init();
 
-	HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, SET);
+	//wejœcie w trym konfiguracji
+	enterConfigMode(&huart3, &huart2);
+	uartWriteLine(&huart3, "Starting!");
 
 	/* USER CODE END 2 */
 
@@ -109,23 +149,18 @@ int main(void)
 
 		/* USER CODE BEGIN 3 */
 		HAL_Delay(250);
-		if(MFRC522_Check(cardID) == MI_OK){
-			if(lastCardStatus != MI_OK){
-				lastCardStatus = MI_OK;
-				HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, RESET);
-				HAL_GPIO_WritePin(exitLed_GPIO_Port, exitLed_Pin, SET);
 
-				HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);
-				uint8_t len = sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X\r\n", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
-				HAL_UART_Transmit(&huart3, (uint8_t*) &cardIDtext, len+1, 100);
-				HAL_Delay(1000);
-			}
+		checkModeChange();
+
+		if(newCardDetected(cardID)){
+			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);
+			uint8_t len = sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+			uartWriteLine(&huart3, cardIDtext);
+			HAL_Delay(1000);
 		}else{
-			lastCardStatus = MI_NOTAGERR;
 			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, SET);
-			HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, SET);
-			HAL_GPIO_WritePin(exitLed_GPIO_Port, exitLed_Pin, RESET);
 		}
+
 	}
 	/* USER CODE END 3 */
 
@@ -261,10 +296,10 @@ static void MX_GPIO_Init(void)
 	HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, GPIO_PIN_SET);
 
 	/*Configure GPIO pin Output Level */
-	HAL_GPIO_WritePin(GPIOA, enterLed_Pin|exitLed_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, GPIO_PIN_RESET);
 
 	/*Configure GPIO pin Output Level */
-	HAL_GPIO_WritePin(SPI_NSS_GPIO_Port, SPI_NSS_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, exitLed_Pin|SPI_NSS_Pin, GPIO_PIN_SET);
 
 	/*Configure GPIO pin : redLed_Pin */
 	GPIO_InitStruct.Pin = redLed_Pin;
@@ -287,7 +322,7 @@ static void MX_GPIO_Init(void)
 	/*Configure GPIO pins : exitButton_Pin enterButton_Pin */
 	GPIO_InitStruct.Pin = exitButton_Pin|enterButton_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
