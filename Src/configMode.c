@@ -26,7 +26,7 @@ void enterConfigMode(UART_HandleTypeDef *h_configUart, UART_HandleTypeDef *h_wif
 
 	//Wysy³a znak zachêty, nastêpnie czeka na komendê.
 	uartWriteLine(h_configUart, ">");
-	uartReadLine(h_configUart, rxData, 16, 5000);
+	uartReadLine(h_configUart, rxData, 16, 1000);
 
 	if(strcmp(rxData, "config -w") == 0){
 		uartWriteLine(h_configUart, "Password:");

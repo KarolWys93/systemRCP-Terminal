@@ -40,6 +40,7 @@
 #include "mfrc522_SPI.h"
 #include "configMode.h"
 #include "uart.h"
+#include "wifiModule.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -50,6 +51,9 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+#define uartPC huart3
+#define uartWiFi huart2
 
 typedef enum
 {
@@ -75,6 +79,7 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
+void initTerminal(void);
 void checkModeChange(void);
 bool newCardDetected(uint8_t* id);
 
@@ -93,6 +98,10 @@ void checkModeChange(void){
 		HAL_GPIO_WritePin(exitLed_GPIO_Port, exitLed_Pin, RESET);
 		terminalMode = exitMode;
 	}
+}
+
+void initTerminal(void){
+
 }
 
 bool newCardDetected(uint8_t* id){
@@ -132,12 +141,18 @@ int main(void)
 	MX_USART2_UART_Init();
 
 	/* USER CODE BEGIN 2 */
+
+	//próba wejœcia w tryb konfiguracji
+	enterConfigMode(&uartPC, &uartWiFi);
+
+	uartWriteLine(&uartPC, "Starting!");
+
 	mfrc522_SPI_setHandler(&hspi1, SPI_NSS_GPIO_Port, SPI_NSS_Pin);
 	MFRC522_Init();
 
-	//wejœcie w trym konfiguracji
-	enterConfigMode(&huart3, &huart2);
-	uartWriteLine(&huart3, "Starting!");
+	if(WiFi_restart(&uartWiFi, 10000) != WiFi_OK)
+		Error_Handler();
+	uartWriteLine(&uartPC, "WiFi OK!");
 
 	/* USER CODE END 2 */
 
@@ -154,8 +169,34 @@ int main(void)
 
 		if(newCardDetected(cardID)){
 			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);
-			uint8_t len = sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
-			uartWriteLine(&huart3, cardIDtext);
+			sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+			uartWriteLine(&uartPC, cardIDtext);
+
+			//testowe -> otwiera po³¹czenie, ale go nie zamyka
+			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
+				WiFI_Status status = WiFi_openConnection(&uartWiFi, "192.168.0.157", "8189");
+				switch (status) {
+					case WiFi_OK:
+						uartWriteLine(&uartPC, "OK");
+						break;
+					case WiFi_NO_IP:
+						uartWriteLine(&uartPC, "no ip");
+						break;
+					case WiFi_ERROR:
+						uartWriteLine(&uartPC, "ERROR");
+						break;
+					case WiFi_DNS_FAIL:
+						uartWriteLine(&uartPC, "DNS Fail");
+						break;
+					case WiFi_ALREADY_CONNECT:
+						uartWriteLine(&uartPC, "ALREAY CONNECT");
+						break;
+					default:
+						break;
+				}
+			}else{
+				uartWriteLine(&uartPC, "no AP");
+			}
 			HAL_Delay(1000);
 		}else{
 			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, SET);
