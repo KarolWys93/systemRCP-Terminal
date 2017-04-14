@@ -41,6 +41,7 @@
 #include "configMode.h"
 #include "uart.h"
 #include "wifiModule.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -64,6 +65,9 @@ typedef enum
 Terminal_mode terminalMode = enterMode;
 uint8_t cardID[5];
 char cardIDtext[20];
+
+char WiFibuffor[256];
+uint16_t size = 0;
 
 
 /* USER CODE END PV */
@@ -174,10 +178,17 @@ int main(void)
 
 			//testowe -> otwiera po³¹czenie, ale go nie zamyka
 			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
-				WiFI_Status status = WiFi_openConnection(&uartWiFi, "192.168.0.157", "8189");
+				WiFI_Status status = WiFi_openConnection(&uartWiFi, "Karol-Lenovo", "8189");	//Nawi¹zanie ³¹cznoœci z serwerem
 				switch (status) {
 					case WiFi_OK:
 						uartWriteLine(&uartPC, "OK");
+						strcpy(WiFibuffor, cardIDtext);
+						strcat(WiFibuffor, "\r\n\r\n");
+						WiFi_sendData(&uartWiFi, WiFibuffor, strlen(WiFibuffor));
+						size = WiFi_readData(&uartWiFi, WiFibuffor, 256, 5000);
+						uartWriteLine(&uartPC, "send OK!");
+						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, size, 1000);
+
 						break;
 					case WiFi_NO_IP:
 						uartWriteLine(&uartPC, "no ip");

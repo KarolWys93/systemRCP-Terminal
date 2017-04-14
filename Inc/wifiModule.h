@@ -27,6 +27,7 @@ WiFI_Status WiFi_checkAPconnection(UART_HandleTypeDef * huart);
 WiFI_Status WiFi_openConnection(UART_HandleTypeDef * huart, char * adress, char * port);
 WiFI_Status WiFi_closeConnection(UART_HandleTypeDef * huart);
 WiFI_Status WiFi_sendData(UART_HandleTypeDef * huart, char * data, uint16_t dataLength);
+uint16_t WiFi_readData(UART_HandleTypeDef * huart, char * data, uint16_t bufforLen, uint32_t timeout);
 
 //TODO odbiór danych
 

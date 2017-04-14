@@ -8,7 +8,6 @@
 #include "configMode.h"
 #include "uart.h"
 #include "string.h"
-#include "strings.h"
 #include "stdbool.h"
 
 
