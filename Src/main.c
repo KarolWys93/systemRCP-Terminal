@@ -42,6 +42,8 @@
 #include "uart.h"
 #include "wifiModule.h"
 #include "string.h"
+#include "defines.h"
+#include "HTTPrequest.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -56,18 +58,14 @@ UART_HandleTypeDef huart3;
 #define uartPC huart3
 #define uartWiFi huart2
 
-typedef enum
-{
-	enterMode = 0,
-	exitMode
-}Terminal_mode;
+
 
 Terminal_mode terminalMode = enterMode;
 uint8_t cardID[5];
-char cardIDtext[20];
 
-char WiFibuffor[256];
+//char WiFibuffor[512];
 uint16_t size = 0;
+char cardIDtext[20];
 
 
 /* USER CODE END PV */
@@ -86,6 +84,7 @@ static void MX_USART2_UART_Init(void);
 void initTerminal(void);
 void checkModeChange(void);
 bool newCardDetected(uint8_t* id);
+//void prepareRequest(char* request, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port);
 
 /* USER CODE END PFP */
 
@@ -120,6 +119,35 @@ bool newCardDetected(uint8_t* id){
 	}
 	return false;
 }
+
+//void prepareRequest(char* request, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port){
+//
+//	char cardNumStr[11];
+//	sprintf(cardNumStr, "%02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+//
+//	//nag³ówek
+//	strcpy(request, "GET / HTTP/1.1\r\n");
+//	strcat(request, "Host:");
+//	strcat(request, hostAdress);
+//	strcat(request, ":");
+//	strcat(request, port);
+//	strcat(request, "\r\n");
+//	strcat(request, "Connection: keep-alive\r\n\r\n");
+//	//koniec nag³ówka
+//
+//	strcat(request, "{\"Mode\": ");
+//
+//	if(mode == enterMode){
+//		strcat(request, "\"enter\", ");
+//	}else{
+//		strcat(request, "\"exit\", ");
+//	}
+//
+//	strcat(request, "\"CardID\": \"");
+//	strcat(request, cardNumStr);
+//	strcat(request, "\"}");
+//}
+//
 
 /* USER CODE END 0 */
 
@@ -172,22 +200,28 @@ int main(void)
 		checkModeChange();
 
 		if(newCardDetected(cardID)){
-			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);
-			sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
-			uartWriteLine(&uartPC, cardIDtext);
+			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);	//Zapalenie czerwonej diody
+			//sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+			//uartWriteLine(&uartPC, cardIDtext);
 
 			//testowe -> otwiera po³¹czenie, ale go nie zamyka
 			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
-				WiFI_Status status = WiFi_openConnection(&uartWiFi, "Karol-Lenovo", "8189");	//Nawi¹zanie ³¹cznoœci z serwerem
-				switch (status) {
+
+				RequestResult status = cardRequest(&uartWiFi, &uartPC, cardID, terminalMode, "192.168.0.157", "8189");
+
+				//WiFI_Status status = WiFi_openConnection(&uartWiFi, "Karol-Lenovo", "8189");	//Nawi¹zanie ³¹cznoœci z serwerem
+				//WiFI_Status status = WiFi_openConnection(&uartWiFi, "192.168.0.157", "8189");
+				switch (status.wifiStatus) {
 					case WiFi_OK:
 						uartWriteLine(&uartPC, "OK");
-						strcpy(WiFibuffor, cardIDtext);
-						strcat(WiFibuffor, "\r\n\r\n");
-						WiFi_sendData(&uartWiFi, WiFibuffor, strlen(WiFibuffor));
-						size = WiFi_readData(&uartWiFi, WiFibuffor, 256, 5000);
-						uartWriteLine(&uartPC, "send OK!");
-						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, size, 1000);
+//						strcpy(WiFibuffor, cardIDtext);
+//						strcat(WiFibuffor, "\r\n\r\n");
+//						prepareRequest(WiFibuffor, cardID, terminalMode, "192.168.0.157", "8189");
+//						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, strlen(WiFibuffor), 1000);
+//						WiFi_sendData(&uartWiFi, WiFibuffor, strlen(WiFibuffor));
+//						size = WiFi_readData(&uartWiFi, WiFibuffor, 256, 5000);
+//						uartWriteLine(&uartPC, "send OK!");
+//						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, size, 1000);
 
 						break;
 					case WiFi_NO_IP:
@@ -210,7 +244,7 @@ int main(void)
 			}
 			HAL_Delay(1000);
 		}else{
-			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, SET);
+			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, SET);	//zgaszenie diody
 		}
 
 	}
