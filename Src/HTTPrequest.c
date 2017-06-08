@@ -32,7 +32,7 @@ RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, 
 					cardID[3],
 					cardID[4]);
 
-	sprintf(httpBuffer, "POST /RFIDterminal HTTP/1.1\r\nHost: %s:%s\r\nConnection: keep-alive\r\nContent-Length: %d\r\n\r\n",
+	sprintf(httpBuffer, "POST /RFIDterminal HTTP/1.1\r\nHost: %s:%s\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n",
 			hostAdress, port, bodySize);
 
 	strcat(httpBuffer, httpBody);
