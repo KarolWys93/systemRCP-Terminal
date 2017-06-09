@@ -10,6 +10,10 @@
 #include "string.h"
 #include "stdbool.h"
 
+static int8_t checkPass(UART_HandleTypeDef *h_configUart);
+
+char HOST_NAME[64] = "192.168.0.157";
+char HOST_PORT[6] = "8189";
 
 /**
  * @brief  Funkcja implementuj¹ca tryb konfiguracyjny termianala
@@ -20,17 +24,15 @@
  */
 void enterConfigMode(UART_HandleTypeDef *h_configUart, UART_HandleTypeDef *h_wifiUart){
 
-	const char CONFIG_PASS [] = "12345678";	//Rozwi¹zanie chwilowe!!
-	char rxData[16];
+	char rxBuff[128];
 
 	//Wysy³a znak zachêty, nastêpnie czeka na komendê.
 	uartWriteLine(h_configUart, ">");
-	uartReadLine(h_configUart, rxData, 16, 1000);
+	uartReadLine(h_configUart, rxBuff, sizeof rxBuff / sizeof rxBuff[0], 1000);
 
-	if(strcmp(rxData, "config -w") == 0){
-		uartWriteLine(h_configUart, "Password:");
-		uartReadLine(h_configUart, rxData, 16, 20000);	//Oczekiwanie 20s na podanie has³a
-		if(strcmp(rxData, CONFIG_PASS) == 0){
+	//tryb komend AT dla modu³u WiFi
+	if(strcmp(rxBuff, "config -a") == 0){
+		if(checkPass(h_configUart) == 0){
 			uartWriteLine(h_configUart, "OK!");
 			__HAL_RCC_DMA1_CLK_ENABLE();
 
@@ -52,6 +54,33 @@ void enterConfigMode(UART_HandleTypeDef *h_configUart, UART_HandleTypeDef *h_wif
 			while(1){};
 		}
 		uartWriteLine(h_configUart, "Access denied!");
+	}else if(strcmp(rxBuff, "config -s") == 0){
+		if(checkPass(h_configUart) == 0){
+			uartWriteLine(h_configUart, "Host adress:");
+			uartReadLine(h_configUart, rxBuff, sizeof rxBuff / sizeof rxBuff[0], 20000);
+			char* portStr = strchr(rxBuff, ':');
+			if(portStr != NULL){
+				*portStr = '\0';
+				strcpy(HOST_NAME, rxBuff);
+				strcpy(HOST_PORT, portStr+1);
+				uartWriteLine(h_configUart, "Host:");
+				uartWriteLine(h_configUart, HOST_NAME);
+				uartWriteLine(h_configUart, "Port:");
+				uartWriteLine(h_configUart, HOST_PORT);
+			}else{
+				uartWriteLine(h_configUart, "Wrong host name!");
+			}
+		}else{
+			uartWriteLine(h_configUart, "Access denied!");
+		}
 	}
+}
+
+int8_t checkPass(UART_HandleTypeDef *h_configUart){
+	const char CONFIG_PASS [] = "12345678";	//Rozwi¹zanie chwilowe!!
+	char passBuff[16];
+	uartWriteLine(h_configUart, "Password:");
+	uartReadLine(h_configUart, passBuff, sizeof passBuff/sizeof passBuff[0], 20000);	//Oczekiwanie 20s na podanie has³a
+	return strcmp(passBuff, CONFIG_PASS);
 }
 

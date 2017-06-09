@@ -234,9 +234,9 @@ int main(void)
 
 			//testowe -> otwiera po³¹czenie, ale go nie zamyka
 			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
-				sprintf(uartTextBuff, "CardID: %02X%02X%02X%02X%02X", cardID);
+				sprintf(uartTextBuff, "CardID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
 				uartWriteLine(&uartPC, uartTextBuff);
-				RequestResult status = cardRequest(&uartWiFi, cardID, terminalMode, "192.168.0.157", "8189");
+				RequestResult status = cardRequest(&uartWiFi, cardID, terminalMode, HOST_NAME, HOST_PORT);
 
 				//WiFI_Status status = WiFi_openConnection(&uartWiFi, "Karol-Lenovo", "8189");	//Nawi¹zanie ³¹cznoœci z serwerem
 
