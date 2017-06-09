@@ -53,6 +53,12 @@
 #define exitButton_GPIO_Port GPIOB
 #define enterButton_Pin GPIO_PIN_13
 #define enterButton_GPIO_Port GPIOB
+#define sLedB_Pin GPIO_PIN_7
+#define sLedB_GPIO_Port GPIOB
+#define sLedG_Pin GPIO_PIN_8
+#define sLedG_GPIO_Port GPIOB
+#define sLedR_Pin GPIO_PIN_9
+#define sLedR_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

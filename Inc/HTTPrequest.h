@@ -25,6 +25,6 @@ typedef struct {
 	uint16_t HTTP_status;
 } RequestResult;
 
-RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port);
+RequestResult cardRequest(UART_HandleTypeDef * WiFi, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port);
 
 #endif /* HTTPREQUEST_H_ */

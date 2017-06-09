@@ -58,14 +58,22 @@ UART_HandleTypeDef huart3;
 #define uartPC huart3
 #define uartWiFi huart2
 
-
+typedef enum {
+	LED_BLACK,
+	LED_RED,
+	LED_GREEN,
+	LED_BLUE,
+	LED_YELLOW,
+	LED_MAGENTA,
+	LED_CYAN,
+	LED_WHITE
+} LedColor;
 
 Terminal_mode terminalMode = enterMode;
 uint8_t cardID[5];
-
-//char WiFibuffor[512];
 uint16_t size = 0;
-char cardIDtext[20];
+char uartTextBuff[64];
+
 
 
 /* USER CODE END PV */
@@ -84,11 +92,13 @@ static void MX_USART2_UART_Init(void);
 void initTerminal(void);
 void checkModeChange(void);
 bool newCardDetected(uint8_t* id);
-//void prepareRequest(char* request, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port);
+void setLedColor(LedColor color);
+void blinkWiFiError(void);
 
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+
 void checkModeChange(void){
 	if(HAL_GPIO_ReadPin(enterButton_GPIO_Port, enterButton_Pin) == GPIO_PIN_RESET){
 		HAL_GPIO_WritePin(enterLed_GPIO_Port, enterLed_Pin, RESET);
@@ -120,34 +130,52 @@ bool newCardDetected(uint8_t* id){
 	return false;
 }
 
-//void prepareRequest(char* request, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port){
-//
-//	char cardNumStr[11];
-//	sprintf(cardNumStr, "%02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
-//
-//	//nag³ówek
-//	strcpy(request, "GET / HTTP/1.1\r\n");
-//	strcat(request, "Host:");
-//	strcat(request, hostAdress);
-//	strcat(request, ":");
-//	strcat(request, port);
-//	strcat(request, "\r\n");
-//	strcat(request, "Connection: keep-alive\r\n\r\n");
-//	//koniec nag³ówka
-//
-//	strcat(request, "{\"Mode\": ");
-//
-//	if(mode == enterMode){
-//		strcat(request, "\"enter\", ");
-//	}else{
-//		strcat(request, "\"exit\", ");
-//	}
-//
-//	strcat(request, "\"CardID\": \"");
-//	strcat(request, cardNumStr);
-//	strcat(request, "\"}");
-//}
-//
+void setLedColor(LedColor color){
+	HAL_GPIO_WritePin(sLedR_GPIO_Port, sLedR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(sLedG_GPIO_Port, sLedG_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(sLedB_GPIO_Port, sLedB_Pin, GPIO_PIN_SET);
+
+	switch (color) {
+	case LED_RED:
+		HAL_GPIO_WritePin(sLedR_GPIO_Port, sLedR_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_GREEN:
+		HAL_GPIO_WritePin(sLedG_GPIO_Port, sLedG_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_BLUE:
+		HAL_GPIO_WritePin(sLedB_GPIO_Port, sLedB_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_YELLOW:
+		HAL_GPIO_WritePin(sLedR_GPIO_Port, sLedR_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(sLedG_GPIO_Port, sLedG_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_MAGENTA:
+		HAL_GPIO_WritePin(sLedR_GPIO_Port, sLedR_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(sLedB_GPIO_Port, sLedB_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_CYAN:
+		HAL_GPIO_WritePin(sLedB_GPIO_Port, sLedB_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(sLedG_GPIO_Port, sLedG_Pin, GPIO_PIN_RESET);
+		break;
+	case LED_WHITE:
+		HAL_GPIO_WritePin(sLedR_GPIO_Port, sLedR_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(sLedG_GPIO_Port, sLedG_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(sLedB_GPIO_Port, sLedB_Pin, GPIO_PIN_RESET);
+		break;
+	default:
+		break;
+	}
+
+}
+
+void blinkWiFiError(void){
+	for(uint8_t i = 0; i < 2; i++){
+		setLedColor(LED_BLUE);
+		HAL_Delay(500);
+		setLedColor(LED_RED);
+		HAL_Delay(500);
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -197,52 +225,75 @@ int main(void)
 		/* USER CODE BEGIN 3 */
 		HAL_Delay(250);
 
+
 		checkModeChange();
 
 		if(newCardDetected(cardID)){
 			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, RESET);	//Zapalenie czerwonej diody
-			//sprintf(cardIDtext, "ID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
-			//uartWriteLine(&uartPC, cardIDtext);
+
 
 			//testowe -> otwiera po³¹czenie, ale go nie zamyka
 			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
-
-				RequestResult status = cardRequest(&uartWiFi, &uartPC, cardID, terminalMode, "192.168.0.157", "8189");
+				sprintf(uartTextBuff, "CardID: %02X%02X%02X%02X%02X", cardID);
+				uartWriteLine(&uartPC, uartTextBuff);
+				RequestResult status = cardRequest(&uartWiFi, cardID, terminalMode, "192.168.0.157", "8189");
 
 				//WiFI_Status status = WiFi_openConnection(&uartWiFi, "Karol-Lenovo", "8189");	//Nawi¹zanie ³¹cznoœci z serwerem
-				//WiFI_Status status = WiFi_openConnection(&uartWiFi, "192.168.0.157", "8189");
-				switch (status.wifiStatus) {
-					case WiFi_OK:
-						uartWriteLine(&uartPC, "OK");
-//						strcpy(WiFibuffor, cardIDtext);
-//						strcat(WiFibuffor, "\r\n\r\n");
-//						prepareRequest(WiFibuffor, cardID, terminalMode, "192.168.0.157", "8189");
-//						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, strlen(WiFibuffor), 1000);
-//						WiFi_sendData(&uartWiFi, WiFibuffor, strlen(WiFibuffor));
-//						size = WiFi_readData(&uartWiFi, WiFibuffor, 256, 5000);
-//						uartWriteLine(&uartPC, "send OK!");
-//						HAL_UART_Transmit(&uartPC, (uint8_t *)WiFibuffor, size, 1000);
 
-						break;
-					case WiFi_NO_IP:
-						uartWriteLine(&uartPC, "no ip");
-						break;
-					case WiFi_ERROR:
-						uartWriteLine(&uartPC, "ERROR");
-						break;
-					case WiFi_DNS_FAIL:
-						uartWriteLine(&uartPC, "DNS Fail");
-						break;
-					case WiFi_ALREADY_CONNECT:
-						uartWriteLine(&uartPC, "ALREAY CONNECT");
-						break;
-					default:
-						break;
+				switch (status.wifiStatus) {
+				case WiFi_OK:
+					uartWriteLine(&uartPC, "WIFI OK");
+
+					if(status.result == ACCESS_GRANTED){
+						setLedColor(LED_GREEN);
+						uartWriteLine(&uartPC, "ACCESS_GRANTED");
+						HAL_Delay(1000);
+					}else if(status.result == ACCESS_DENIED){
+						setLedColor(LED_RED);
+						uartWriteLine(&uartPC, "ACCESS_DENIED");
+						HAL_Delay(1000);
+					}else{
+						sprintf(uartTextBuff, "Server Error: %d", status.HTTP_status);
+						uartWriteLine(&uartPC, uartTextBuff);
+						for(uint8_t i = 0; i < 2; i++){
+							setLedColor(LED_YELLOW);
+							HAL_Delay(500);
+							setLedColor(LED_BLACK);
+							HAL_Delay(500);
+						}
+					}
+
+					break;
+				case WiFi_NO_IP:
+					uartWriteLine(&uartPC, "no ip");
+					blinkWiFiError();
+					break;
+				case WiFi_ERROR:
+					uartWriteLine(&uartPC, "WIFI ERROR");
+					blinkWiFiError();
+					break;
+				case WiFi_DNS_FAIL:
+					uartWriteLine(&uartPC, "DNS Fail");
+					blinkWiFiError();
+					break;
+				case WiFi_ALREADY_CONNECT:
+					uartWriteLine(&uartPC, "ALREAY CONNECT");
+					blinkWiFiError();
+					break;
+				default:
+					break;
 				}
 			}else{
 				uartWriteLine(&uartPC, "no AP");
+				for(uint8_t i = 0; i < 2; i++){
+					setLedColor(LED_BLUE);
+					HAL_Delay(500);
+					setLedColor(LED_BLACK);
+					HAL_Delay(500);
+				}
 			}
-			HAL_Delay(1000);
+
+			setLedColor(LED_BLACK);
 		}else{
 			HAL_GPIO_WritePin(redLed_GPIO_Port, redLed_Pin, SET);	//zgaszenie diody
 		}
@@ -387,6 +438,9 @@ static void MX_GPIO_Init(void)
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(GPIOA, exitLed_Pin|SPI_NSS_Pin, GPIO_PIN_SET);
 
+	/*Configure GPIO pin Output Level */
+	HAL_GPIO_WritePin(GPIOB, sLedB_Pin|sLedG_Pin|sLedR_Pin, GPIO_PIN_SET);
+
 	/*Configure GPIO pin : redLed_Pin */
 	GPIO_InitStruct.Pin = redLed_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -409,6 +463,12 @@ static void MX_GPIO_Init(void)
 	GPIO_InitStruct.Pin = exitButton_Pin|enterButton_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	/*Configure GPIO pins : sLedB_Pin sLedG_Pin sLedR_Pin */
+	GPIO_InitStruct.Pin = sLedB_Pin|sLedG_Pin|sLedR_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }

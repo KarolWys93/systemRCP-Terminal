@@ -17,7 +17,7 @@ char httpBuffer[256];
 
 static int8_t jsoneq(const char *json, jsmntok_t *tok, const char *s);
 
-RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port){
+RequestResult cardRequest(UART_HandleTypeDef * WiFi, uint8_t* cardID, Terminal_mode mode, char* hostAdress, char* port){
 	RequestResult result;
 	result.HTTP_status = CHECK_ERROR;
 	result.wifiStatus = WiFi_OK;
@@ -43,9 +43,6 @@ RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, 
 
 	strcat(httpBuffer, httpBody);
 
-	//DEBUG!
-	HAL_UART_Transmit(uart, (uint8_t *)httpBuffer, strlen(httpBuffer), 1000);
-
 
 	//wys³anie zapytania
 	result.wifiStatus = WiFi_openConnection(WiFi, hostAdress, port);
@@ -68,24 +65,10 @@ RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, 
 
 			char* responseBody = strstr(httpBuffer, "\r\n\r\n")+4;	//\r\n\r\n -> 4 znaki
 
-			//DEBUG!
-			HAL_UART_Transmit(uart, (uint8_t *)httpBuffer, strlen(httpBuffer), 1000);
-			uartWriteLine(uart, "Response body:");
-			HAL_UART_Transmit(uart, (uint8_t *)responseBody, strlen(responseBody), 1000);
-
-
-
 			jsmn_init(&jsonParser);
 			int8_t numOfTokens = jsmn_parse(&jsonParser, responseBody, strlen(responseBody), jsonTokens, sizeof(jsonTokens)/sizeof(jsonTokens[0]));
 
-			if(numOfTokens < 0){
-				uartWriteLine(uart, "Parse Error");
-				result.result = CHECK_ERROR;
-				return result;
-			}
-
-			if (numOfTokens < 1 || jsonTokens[0].type != JSMN_OBJECT) {
-				uartWriteLine(uart, "Object expected");
+			if ((numOfTokens < 0) || numOfTokens < 1 || jsonTokens[0].type != JSMN_OBJECT) {
 				result.result = CHECK_ERROR;
 				return result;
 			}
@@ -94,13 +77,10 @@ RequestResult cardRequest(UART_HandleTypeDef * WiFi, UART_HandleTypeDef * uart, 
 				if(jsoneq(responseBody, &jsonTokens[i], "Access") == 0){
 					if(jsoneq(responseBody, &jsonTokens[i+1], "granted") == 0){
 						result.result = ACCESS_GRANTED;
-						uartWriteLine(uart, "ACCESS_GRANTED");
 					}else if(jsoneq(responseBody, &jsonTokens[i+1], "denied") == 0){
 						result.result = ACCESS_DENIED;
-						uartWriteLine(uart, "ACCESS_DENIED");
 					}else{
 						result.result = CHECK_ERROR;
-						uartWriteLine(uart, "CHECK_ERROR");
 					}
 				}
 			}
