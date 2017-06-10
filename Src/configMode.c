@@ -12,6 +12,7 @@
 
 static int8_t checkPass(UART_HandleTypeDef *h_configUart);
 
+//przyk³adowe wartoœci
 char HOST_NAME[64] = "192.168.0.157";
 char HOST_PORT[6] = "8189";
 
@@ -72,6 +73,47 @@ void enterConfigMode(UART_HandleTypeDef *h_configUart, UART_HandleTypeDef *h_wif
 			}
 		}else{
 			uartWriteLine(h_configUart, "Access denied!");
+		}
+	}else if(strcmp(rxBuff, "config -w") == 0){
+		if(checkPass(h_configUart) == 0){
+			uartWriteLine(h_configUart, "Current WiFi AP:");
+			uartWriteLine(h_wifiUart, "AT+CWJAP?");
+			uartReadLine(h_wifiUart, rxBuff, sizeof rxBuff/sizeof rxBuff[0], 1000);
+			uartReadLine(h_wifiUart, rxBuff, sizeof rxBuff/sizeof rxBuff[0], 1000);
+			uartWriteLine(h_configUart, rxBuff);
+			do{
+				rxBuff[0] = '\0';
+				uartWriteLine(h_configUart, "AP change? (y/n)");
+				uartReadLine(h_configUart, rxBuff, sizeof rxBuff/sizeof rxBuff[0], 20000);
+				if(rxBuff[0] == '\0')
+					break;
+			}while((rxBuff[0] != 'y' && rxBuff[0] != 'Y' && rxBuff[0] != 'n' && rxBuff[0] != 'N'));
+
+			if(rxBuff[0] != 'y' && rxBuff[0] != 'Y'){
+				return;
+			}
+
+			char ATcmd [64] = "AT+CWJAP=\"";
+			rxBuff[0] = '\0';
+			uartWriteLine(h_configUart, "WiFi SSID:");
+			uartReadLine(h_configUart, rxBuff, 33, 120000);
+			if(strlen(rxBuff) == 0){
+				uartWriteLine(h_configUart, "Timeout!");
+				return;
+			}
+			strcat(ATcmd, rxBuff);
+			strcat(ATcmd, "\",\"");
+			uartWriteLine(h_configUart, "WiFi password:");
+			uartReadLine(h_configUart, rxBuff, sizeof rxBuff/sizeof rxBuff[0], 120000);
+			strcat(ATcmd, rxBuff);
+			strcat(ATcmd, "\"");
+			uartWriteLine(h_configUart, "wait...");
+			rxBuff[0] = '\0';
+			uartWriteLine(h_wifiUart, ATcmd);
+			do{
+				uartReadLine(h_wifiUart, rxBuff, sizeof rxBuff/sizeof rxBuff[0], 30000);
+			}while(strcmp(rxBuff, "OK") != 0 && strcmp(rxBuff, "FAIL") != 0);
+			uartWriteLine(h_configUart, rxBuff);
 		}
 	}
 }

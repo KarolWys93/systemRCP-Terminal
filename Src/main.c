@@ -234,7 +234,13 @@ int main(void)
 
 			//testowe -> otwiera po³¹czenie, ale go nie zamyka
 			if(WiFi_checkAPconnection(&uartWiFi) == WiFi_OK){
-				sprintf(uartTextBuff, "CardID: %02X%02X%02X%02X%02X", cardID[0], cardID[1], cardID[2], cardID[3], cardID[4]);
+				sprintf(uartTextBuff, "CardID: %02X%02X%02X%02X%02X %s",
+						cardID[0],
+						cardID[1],
+						cardID[2],
+						cardID[3],
+						cardID[4],
+						terminalMode == enterMode ? "enter" : "exit");
 				uartWriteLine(&uartPC, uartTextBuff);
 				RequestResult status = cardRequest(&uartWiFi, cardID, terminalMode, HOST_NAME, HOST_PORT);
 
